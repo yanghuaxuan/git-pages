@@ -6,36 +6,39 @@ use regex::Regex;
 
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
-    let host = req.headers().get("Host");
-    let file = std::fs::read_to_string("./templates/index.html");
-    let server_err_resp = "Internal Server Error \r\n";
+    let server_err = "Internal Server Error \r\n";
+    let bad_req = "Please pass in a valid Host header! \r\n";
 
-    let root_domain = std::env::var("ROOT_DOMAIN").unwrap();
-    let re = Regex::new(&format!(r#"(?P<subdomain>\w*)\.({})"#, root_domain)).unwrap();
+    let file = match std::fs::read_to_string("./templates/index.html") {
+        Ok(val) => val,
+        Err(_) => String::from("")
+    };
+
+    if file.len() == 0 {
+        return HttpResponse::InternalServerError().body(server_err)
+    }
+
+    let host = req.headers().get("Host");
+
+    let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
+    let re = Regex::new(&format!(r#"(?P<subdomain>\w*)\.({})"#, root_domain)).expect("Unexpected error while compiling a regex!");
 
     match host {
-        Some(header) => {
-            match header.to_str() {
-                Ok(val) => { 
-                    let domain = val.to_owned();
-                    let caps = re.captures(&domain);
+        Some(val) => {
+            let val = val.to_str().unwrap_or_else(|_| "");
 
-                    let subdomain = match caps {
-                        Some(val) => val["subdomain"].to_owned(),
-                        None => String::from("")
-                    };
+            if val.len() == 0 {
+                return HttpResponse::BadRequest().body(bad_req)
+            }
 
-                    HttpResponse::Ok().body(val.to_owned()) 
-                },
-                Err(_) => HttpResponse::InternalServerError().body(server_err_resp)
+            let caps = re.captures(&val);
+
+            match caps {
+                Some(val) => HttpResponse::Ok().body(val["subdomain"].to_owned()),
+                None => HttpResponse::Ok().body(file)
             }
         },
-        None => {
-            match file {
-                Ok(val) => HttpResponse::Ok().body(val),
-                Err(_) => HttpResponse::InternalServerError().body(server_err_resp)
-            }
-        }
+        None => HttpResponse::BadRequest().body(bad_req)
     }
 }
 
