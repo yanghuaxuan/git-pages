@@ -4,13 +4,15 @@ use actix_web::{
 };
 use regex::Regex;
 
-#[get("/")]
+#[get("/{file}")]
 async fn index(req: HttpRequest) -> impl Responder {
-    let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
-    let re = Regex::new(&format!(r#"(?P<subdomain>\w*)\.({})"#, root_domain)).expect("Unexpected error while compiling a regex!");
-
     let server_err = "Internal Server Error \r\n";
     let bad_req = "Please pass in a valid Host header! \r\n";
+
+    let re_comp_fail = "Unexpected error while compiling a regex!";
+
+    let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
+    let re_domain = Regex::new(&format!(r#"((?P<username>\w*)\.)?((?P<repo>\w*)\.)?{}"#, root_domain)).expect(re_comp_fail);
 
     let file = match std::fs::read_to_string("./templates/index.html") {
         Ok(val) => val,
@@ -31,20 +33,20 @@ async fn index(req: HttpRequest) -> impl Responder {
                 return HttpResponse::BadRequest().body(bad_req)
             }
 
-            let caps = re.captures(&val);
+            let dom_caps = re_domain.captures(&val);
 
-            match caps {
-                Some(val) => HttpResponse::Ok().body(val["subdomain"].to_owned()),
-                None => HttpResponse::Ok().body(file)
+            match dom_caps {
+                Some(dom_caps) => {
+                    let username = &dom_caps["username"];
+                    let repo = &dom_caps["repo"];
+
+                    HttpResponse::Ok().body(format!("username: {username}\nrepo: {repo}\n"))
+                },
+                _ => HttpResponse::Ok().body(file)
             }
         },
         None => HttpResponse::BadRequest().body(bad_req)
     }
-}
-
-#[post("/repos/{owner}/{repo}/deploy")]
-async fn handle_deployment() -> impl Responder {
-    HttpResponse::Ok().body("Deploying page!\n")
 }
 
 async fn not_found() -> impl Responder {
@@ -54,11 +56,11 @@ async fn not_found() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    println!("Starting server...");
 
     HttpServer::new(move || {
         App::new()
         .service(index)
-        .service(handle_deployment)
         .default_service(
             web::route().to(not_found)
         )
