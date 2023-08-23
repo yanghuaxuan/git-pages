@@ -24,29 +24,25 @@ async fn index(req: HttpRequest) -> impl Responder {
     }
 
     let host = req.headers().get("Host");
+    if host.is_none() {
+        return HttpResponse::BadRequest().body(bad_req)
+    }
+    let host = host.unwrap().to_str();
+    if host.is_err() {
+        return HttpResponse::BadRequest().body(bad_req)
+    }
 
-    match host {
-        Some(val) => {
-            let val = val.to_str().unwrap_or_else(|_| "");
+    let host = host.unwrap();
+    let dom_caps = re_domain.captures(&host);
 
-            if val.len() == 0 {
-                return HttpResponse::BadRequest().body(bad_req)
-            }
+    match dom_caps {
+        Some(dom_caps) => {
+            let username = &dom_caps.name("username").map_or("", |m| m.as_str());
+            let repo = &dom_caps.name("repo").map_or("", |m| m.as_str());
 
-            let dom_caps = re_domain.captures(&val);
-
-            match dom_caps {
-                Some(dom_caps) => {
-                    let username = &dom_caps.name("username").map_or("", |m| m.as_str());
-                    let repo = &dom_caps.name("repo").map_or("", |m| m.as_str());
-
-                    HttpResponse::Ok().body(format!("username: {username}\nrepo: {repo}\n"))
-                },
-                None => HttpResponse::InternalServerError().into()
-            }
-
+            HttpResponse::Ok().body(format!("username: {username}\nrepo: {repo}\n"))
         },
-        None => HttpResponse::BadRequest().body(bad_req)
+        None => HttpResponse::InternalServerError().into()
     }
 }
 
