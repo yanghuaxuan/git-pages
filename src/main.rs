@@ -37,8 +37,8 @@ async fn index(req: HttpRequest) -> impl Responder {
 
             match dom_caps {
                 Some(dom_caps) => {
-                    let username = &dom_caps["username"];
-                    let repo = &dom_caps["repo"];
+                    let username = &dom_caps.name("username").map_or("", |m| m.as_str());
+                    let repo = &dom_caps.name("repo").map_or("", |m| m.as_str());
 
                     HttpResponse::Ok().body(format!("username: {username}\nrepo: {repo}\n"))
                 },
