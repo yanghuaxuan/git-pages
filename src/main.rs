@@ -4,7 +4,7 @@ use actix_web::{
 };
 use regex::Regex;
 
-#[get("/{file}")]
+#[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
     let server_err = "Internal Server Error \r\n";
     let bad_req = "Please pass in a valid Host header! \r\n";
@@ -42,8 +42,9 @@ async fn index(req: HttpRequest) -> impl Responder {
 
                     HttpResponse::Ok().body(format!("username: {username}\nrepo: {repo}\n"))
                 },
-                _ => HttpResponse::Ok().body(file)
+                None => HttpResponse::InternalServerError().into()
             }
+
         },
         None => HttpResponse::BadRequest().body(bad_req)
     }
