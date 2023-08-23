@@ -16,29 +16,31 @@ async fn index(req: HttpRequest) -> impl Responder {
 
     let file = match std::fs::read_to_string("./templates/index.html") {
         Ok(val) => val,
-        Err(_) => String::from("")
+        Err(_) => {
+            return HttpResponse::InternalServerError().body(server_err)
+        }
     };
 
-    if file.len() == 0 {
-        return HttpResponse::InternalServerError().body(server_err)
-    }
+    let host: Option<&str> = req.headers()
+        .get("Host")
+        .map_or(None, |val| val.to_str().ok());
+    let host = match host {
+        Some(val) => val,
+        None => {
+            return HttpResponse::BadRequest().body(bad_req)
+        }
+    };
 
-    let host = req.headers().get("Host");
-    if host.is_none() {
-        return HttpResponse::BadRequest().body(bad_req)
-    }
-    let host = host.unwrap().to_str();
-    if host.is_err() {
-        return HttpResponse::BadRequest().body(bad_req)
-    }
-
-    let host = host.unwrap();
     let dom_caps = re_domain.captures(&host);
 
     match dom_caps {
         Some(dom_caps) => {
             let username = &dom_caps.name("username").map_or("", |m| m.as_str());
             let repo = &dom_caps.name("repo").map_or("", |m| m.as_str());
+
+            if username.len() == 0 && repo.len() == 0 {
+                return HttpResponse::Ok().body(file)
+            }
 
             HttpResponse::Ok().body(format!("username: {username}\nrepo: {repo}\n"))
         },
