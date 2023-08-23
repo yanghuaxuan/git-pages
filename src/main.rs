@@ -6,6 +6,9 @@ use regex::Regex;
 
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
+    let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
+    let re = Regex::new(&format!(r#"(?P<subdomain>\w*)\.({})"#, root_domain)).expect("Unexpected error while compiling a regex!");
+
     let server_err = "Internal Server Error \r\n";
     let bad_req = "Please pass in a valid Host header! \r\n";
 
@@ -19,9 +22,6 @@ async fn index(req: HttpRequest) -> impl Responder {
     }
 
     let host = req.headers().get("Host");
-
-    let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
-    let re = Regex::new(&format!(r#"(?P<subdomain>\w*)\.({})"#, root_domain)).expect("Unexpected error while compiling a regex!");
 
     match host {
         Some(val) => {
