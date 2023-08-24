@@ -77,7 +77,7 @@ async fn git_pages(req: HttpRequest) -> impl Responder {
             let username = &dom_caps.name("username").unwrap().as_str();
             let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
 
-            let status = std::process::Command::new("git")
+            std::process::Command::new("git")
                 .arg("clone")
                 .arg(format!("{}/{}/{}.git", git_domain, username, repo))
                 .arg(format!("./pages/{}/{}", username, repo))
