@@ -68,8 +68,12 @@ async fn index() -> impl Responder {
 }
 
 async fn not_found() -> impl Responder {
-    let file = std::fs::read_to_string("./templates/404.html").unwrap();
-    HttpResponse::NotFound().body(file)
+    match std::fs::read_to_string("./templates/404.html") {
+        Ok(val) => HttpResponse::NotFound().body(val),
+        Err(_) => {
+            return HttpResponse::InternalServerError().body(SERVER_ERR)
+        }
+    }
 }
 
 #[actix_web::main]
