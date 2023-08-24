@@ -58,6 +58,38 @@ async fn try_pages(req: HttpRequest) -> impl Responder {
     }
 }
 
+async fn git_pages(req: HttpRequest) -> impl Responder {
+    let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
+    let git_domain = std::env::var("GIT_DOMAIN").expect("Environmental variabble GIT_DOMAIN must be defined!");
+    let re_domain = Regex::new(&format!(r#"((?P<username>\w*)\.)?((?P<repo>\w*)\.)?{}"#, root_domain)).unwrap();
+
+    // Valid Host header should already be validated by Guards
+    let host = req.headers()
+        .get("Host")
+        .unwrap()
+        .to_str()
+        .unwrap();
+
+    let dom_caps = re_domain.captures(&host);
+
+    match dom_caps {
+        Some(dom_caps) => {
+            let username = &dom_caps.name("username").unwrap().as_str();
+            let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
+
+            let status = std::process::Command::new("git")
+                .arg("clone")
+                .arg(format!("{}/{}/{}.git", git_domain, username, repo))
+                .arg(format!("./pages/{}/{}", username, repo))
+                .status()
+                .expect("Cannot call git!");
+
+            HttpResponse::Ok().into()
+        },
+        None => HttpResponse::InternalServerError().body(SERVER_ERR)
+    }
+}
+
 async fn index() -> impl Responder {
     match std::fs::read_to_string("./templates/index.html") {
         Ok(val) => HttpResponse::Ok().body(val),
@@ -92,7 +124,8 @@ async fn main() -> std::io::Result<()> {
         .service(
             web::scope("/")
             .guard(HostPattern(re_domain.to_owned()))
-            .route("", web::to(try_pages)))
+            .route("", web::get().to(try_pages))
+            .route("", web::post().to(git_pages)))
         .service(
             web::scope("/")
             .route("", web::to(|| async { HttpResponse::BadRequest()} )))
