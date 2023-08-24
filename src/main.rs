@@ -9,10 +9,8 @@ async fn index(req: HttpRequest) -> impl Responder {
     let server_err = "Internal Server Error \r\n";
     let bad_req = "Please pass in a valid Host header! \r\n";
 
-    let re_comp_fail = "Unexpected error while compiling a regex!";
-
     let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
-    let re_domain = Regex::new(&format!(r#"((?P<username>\w*)\.)?((?P<repo>\w*)\.)?{}"#, root_domain)).expect(re_comp_fail);
+    let re_domain = Regex::new(&format!(r#"((?P<username>\w*)\.)?((?P<repo>\w*)\.)?{}"#, root_domain)).unwrap();
 
     let file = match std::fs::read_to_string("./templates/index.html") {
         Ok(val) => val,
