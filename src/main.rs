@@ -122,7 +122,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
         .service(
-            web::resource("/index.html")
+            web::resource("/{any:.*}")
             .guard(guard::Get())
             .guard(guard::Host(format!("{root_domain}")))
             .to(index))
