@@ -6,6 +6,46 @@ use regex::Regex;
 
 static SERVER_ERR: &str = "Internal Server Error \r\n";
 
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    println!("Starting server...");
+
+    let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
+    let re_domain = Regex::new(&format!(r#"((?P<username>\w*)\.)?((?P<repo>\w*)\.){}"#, root_domain)).unwrap();
+
+    // Extra environmental variable checks before starting server
+    std::env::var("GIT_DOMAIN").expect("Environmental variabble GIT_DOMAIN must be defined!");
+
+    HttpServer::new(move || {
+        App::new()
+        .service(
+            web::resource("/{any:.*}")
+            .guard(guard::Get())
+            .guard(guard::Host(format!("{root_domain}")))
+            .to(index))
+        .service(
+            web::resource("/{filename:.*}")
+            .guard(guard::Get())
+            .guard(HostPattern(re_domain.to_owned()))
+            .to(try_pages))
+        .service(
+            web::resource("/")
+            .guard(guard::Put())
+            .guard(HostPattern(re_domain.to_owned()))
+            .to(fetch_pages)
+        )
+        .service(
+            web::scope("")
+            .route("", web::to(|| async { HttpResponse::BadRequest()} )))
+        .default_service(
+            web::route().to(not_found)
+        )
+    })
+    .bind(("127.0.0.1", 8082))?
+    .run()
+    .await
+}
+
 struct HostPatternGuard {
     host_pattern: Regex
 }
@@ -126,44 +166,4 @@ async fn not_found() -> impl Responder {
             return HttpResponse::InternalServerError().body(SERVER_ERR)
         }
     }
-}
-
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    println!("Starting server...");
-
-    let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
-    let re_domain = Regex::new(&format!(r#"((?P<username>\w*)\.)?((?P<repo>\w*)\.){}"#, root_domain)).unwrap();
-
-    // Extra environmental variable checks before starting server
-    std::env::var("GIT_DOMAIN").expect("Environmental variabble GIT_DOMAIN must be defined!");
-
-    HttpServer::new(move || {
-        App::new()
-        .service(
-            web::resource("/{any:.*}")
-            .guard(guard::Get())
-            .guard(guard::Host(format!("{root_domain}")))
-            .to(index))
-        .service(
-            web::resource("/{filename:.*}")
-            .guard(guard::Get())
-            .guard(HostPattern(re_domain.to_owned()))
-            .to(try_pages))
-        .service(
-            web::resource("/")
-            .guard(guard::Put())
-            .guard(HostPattern(re_domain.to_owned()))
-            .to(fetch_pages)
-        )
-        .service(
-            web::scope("")
-            .route("", web::to(|| async { HttpResponse::BadRequest()} )))
-        .default_service(
-            web::route().to(not_found)
-        )
-    })
-    .bind(("127.0.0.1", 8082))?
-    .run()
-    .await
 }
