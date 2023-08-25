@@ -91,12 +91,14 @@ async fn fetch_pages(req: HttpRequest) -> impl Responder {
                     .arg("clone")
                     .arg(format!("{}/{}/{}.git", git_domain, username, repo))
                     .arg(format!("./pages/{}/{}", username, repo))
+                    .env("GIT_TERMINAL_PROMPT", "0")
                     .status()
                     .expect("Cannot call git!");
             } else {
                std::process::Command::new("git") 
                 .arg("fetch")
                 .arg(format!("./pages/{}/{}", username, repo))
+                .env("GIT_TERMINAL_PROMPT", "0")
                 .status()
                 .expect("Cannot call git!");
             }
