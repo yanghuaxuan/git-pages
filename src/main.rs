@@ -34,7 +34,7 @@ fn HostPattern(host_pattern: Regex) -> HostPatternGuard {
     HostPatternGuard { host_pattern }
 }
 
-async fn try_pages(req: HttpRequest) -> impl Responder {
+async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder {
     let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
     let re_domain = Regex::new(&format!(r#"((?P<username>\w*)\.)?((?P<repo>\w*)\.)?{}"#, root_domain)).unwrap();
 
@@ -50,9 +50,13 @@ async fn try_pages(req: HttpRequest) -> impl Responder {
     match dom_caps {
         Some(dom_caps) => {
             let username = &dom_caps.name("username").map_or("", |m| m.as_str());
-            let repo = &dom_caps.name("repo").map_or("", |m| m.as_str());
+            let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
+            let path = path.into_inner();
 
-            HttpResponse::Ok().body(format!("username: {username}\nrepo: {repo}\n"))
+            match std::fs::read_to_string(format!("./pages/{}/{}/{}", username, repo, path)) {
+                Ok(val) => HttpResponse::Ok().body(val),
+                Err(_) => HttpResponse::NotFound().into()
+            }
         },
         None => HttpResponse::InternalServerError().into()
     }
@@ -118,16 +122,16 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
         .service(
-            web::scope("/")
+            web::resource("/index.html")
+            .guard(guard::Get())
             .guard(guard::Host(format!("{root_domain}")))
-            .route("", web::to(index)))
+            .to(index))
         .service(
-            web::scope("/")
+            web::resource("/{filename:.*}")
             .guard(HostPattern(re_domain.to_owned()))
-            .route("", web::get().to(try_pages))
-            .route("", web::post().to(git_pages)))
+            .to(try_pages))
         .service(
-            web::scope("/")
+            web::scope("")
             .route("", web::to(|| async { HttpResponse::BadRequest()} )))
         .default_service(
             web::route().to(not_found)
