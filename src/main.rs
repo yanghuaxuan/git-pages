@@ -128,8 +128,15 @@ async fn main() -> std::io::Result<()> {
             .to(index))
         .service(
             web::resource("/{filename:.*}")
+            .guard(guard::Get())
             .guard(HostPattern(re_domain.to_owned()))
             .to(try_pages))
+        .service(
+            web::resource("/")
+            .guard(guard::Post())
+            .guard(HostPattern(re_domain.to_owned()))
+            .to(fetch_pages)
+        )
         .service(
             web::scope("")
             .route("", web::to(|| async { HttpResponse::BadRequest()} )))
