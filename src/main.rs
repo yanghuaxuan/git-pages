@@ -135,6 +135,9 @@ async fn main() -> std::io::Result<()> {
     let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
     let re_domain = Regex::new(&format!(r#"((?P<username>\w*)\.)?((?P<repo>\w*)\.){}"#, root_domain)).unwrap();
 
+    // Extra environmental variable checks before starting server
+    std::env::var("GIT_DOMAIN").expect("Environmental variabble GIT_DOMAIN must be defined!");
+
     HttpServer::new(move || {
         App::new()
         .service(
