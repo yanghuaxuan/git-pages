@@ -44,21 +44,15 @@ async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder 
         .unwrap()
         .to_str()
         .unwrap();
+    let dom_caps = re_domain.captures(&host).unwrap();
 
-    let dom_caps = re_domain.captures(&host);
+    let username = &dom_caps.name("username").map_or("", |m| m.as_str());
+    let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
+    let path = path.into_inner();
 
-    match dom_caps {
-        Some(dom_caps) => {
-            let username = &dom_caps.name("username").map_or("", |m| m.as_str());
-            let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
-            let path = path.into_inner();
-
-            match std::fs::read_to_string(format!("./pages/{}/{}/{}", username, repo, path)) {
-                Ok(val) => HttpResponse::Ok().body(val),
-                Err(_) => HttpResponse::NotFound().into()
-            }
-        },
-        None => HttpResponse::InternalServerError().into()
+    match std::fs::read_to_string(format!("./pages/{}/{}/{}", username, repo, path)) {
+        Ok(val) => HttpResponse::Ok().body(val),
+        Err(_) => HttpResponse::NotFound().into()
     }
 }
 
