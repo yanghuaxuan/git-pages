@@ -81,12 +81,32 @@ async fn fetch_pages(req: HttpRequest) -> impl Responder {
             let username = &dom_caps.name("username").unwrap().as_str();
             let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
 
-            std::process::Command::new("git")
-                .arg("clone")
-                .arg(format!("{}/{}/{}.git", git_domain, username, repo))
+            let stat_code = std::process::Command::new("stat")
+                    .arg(format!("./pages/{}/{}", username, repo))
+                    .status()
+                    .expect("Cannot call stat!")
+                    .code();
+
+            let stat_code = match stat_code {
+                Some(val) => val,
+                None => return HttpResponse::InternalServerError().body(SERVER_ERR)
+            };
+
+            if stat_code != 0 {
+                std::process::Command::new("git")
+                    .arg("clone")
+                    .arg(format!("{}/{}/{}.git", git_domain, username, repo))
+                    .arg(format!("./pages/{}/{}", username, repo))
+                    .status()
+                    .expect("Cannot call git!");
+            } else {
+               std::process::Command::new("git") 
+                .arg("fetch")
                 .arg(format!("./pages/{}/{}", username, repo))
                 .status()
                 .expect("Cannot call git!");
+            }
+
 
             HttpResponse::Ok().into()
         },
