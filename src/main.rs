@@ -149,7 +149,7 @@ async fn main() -> std::io::Result<()> {
             .to(try_pages))
         .service(
             web::resource("/")
-            .guard(guard::Post())
+            .guard(guard::Put())
             .guard(HostPattern(re_domain.to_owned()))
             .to(fetch_pages)
         )
