@@ -62,7 +62,7 @@ async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder 
     }
 }
 
-async fn git_pages(req: HttpRequest) -> impl Responder {
+async fn fetch_pages(req: HttpRequest) -> impl Responder {
     let root_domain = std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
     let git_domain = std::env::var("GIT_DOMAIN").expect("Environmental variabble GIT_DOMAIN must be defined!");
     let re_domain = Regex::new(&format!(r#"((?P<username>\w*)\.)?((?P<repo>\w*)\.)?{}"#, root_domain)).unwrap();
