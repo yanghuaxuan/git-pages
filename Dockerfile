@@ -5,4 +5,6 @@ COPY . .
 
 RUN cargo install --path .
 
+EXPOSE 8082/tcp
+
 CMD ["git-pages"]
