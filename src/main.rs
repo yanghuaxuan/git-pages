@@ -36,7 +36,7 @@ async fn main() -> std::io::Result<()> {
             .to(fetch_pages)
         )
         .service(
-            web::scope("")
+            web::scope("/")
             .route("", web::to(|| async { HttpResponse::BadRequest()} )))
         .default_service(
             web::route().to(not_found)
