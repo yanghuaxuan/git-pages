@@ -1,7 +1,7 @@
 use actix_files::NamedFile;
 use actix_web::{
     web, App, HttpResponse, HttpServer,
-    Responder, HttpRequest, guard::{self, Guard}, middleware::Logger, Error, http::StatusCode, CustomizeResponder, body::BoxBody, HttpResponseBuilder
+    Responder, HttpRequest, guard::{self, Guard}, middleware::Logger, http::StatusCode, body::BoxBody
 };
 use regex::Regex;
 
