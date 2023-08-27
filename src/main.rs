@@ -91,23 +91,20 @@ async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder 
     let username = &dom_caps.name("username").map_or("", |m| m.as_str());
     let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
     
-    let og_path_str = path.as_ref();
-    let mut path: std::path::PathBuf = path.parse().unwrap();
+    let path = std::path::PathBuf::from(format!("./pages/{}/{}/{}", username, repo, path.as_str()));
+    println!("{}\n", &path.to_str().unwrap());
 
-    if path.to_str().unwrap().len() == 0 {
-        path = [".", "pages", username, repo, "index.html"].iter().collect();
-    } else {
-        path = std::path::PathBuf::from(format!("./pages/{}/{}/{}", username, repo, og_path_str));
+    let mut file = NamedFile::open_async(&path).await;
+    // Try one more time, this time attempting to serve the index file in a directory
+    if file.is_err() || std::fs::metadata(&path).unwrap().is_dir() {
+        let path = path.join("index.html");
+        file = NamedFile::open_async(path).await;
     }
-
-    let file = NamedFile::open_async(path).await;
-
     if !file.is_err() {
         return file.unwrap().into_response(&req).customize();
     } 
 
     let four_oh_four = NamedFile::open_async("./templates/404.html").await;
-
     if !four_oh_four.is_err() {
         return four_oh_four
             .unwrap()
@@ -116,9 +113,9 @@ async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder 
             .with_status(StatusCode::NOT_FOUND)
     }
 
-    return HttpResponse::InternalServerError()
+    HttpResponse::InternalServerError()
         .body(BoxBody::new(SERVER_ERR))
-        .customize();
+        .customize()
 
 }
 
