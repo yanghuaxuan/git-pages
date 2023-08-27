@@ -1,6 +1,6 @@
 use actix_web::{
     web, App, HttpResponse, HttpServer,
-    Responder, HttpRequest, guard::{self, Guard}
+    Responder, HttpRequest, guard::{self, Guard}, middleware::Logger
 };
 use regex::Regex;
 
@@ -18,6 +18,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+        .wrap(Logger::default())
         .service(
             web::resource("/{any:.*}")
             .guard(guard::Get())
