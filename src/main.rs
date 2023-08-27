@@ -1,6 +1,7 @@
+use actix_files::NamedFile;
 use actix_web::{
     web, App, HttpResponse, HttpServer,
-    Responder, HttpRequest, guard::{self, Guard}, middleware::Logger
+    Responder, HttpRequest, guard::{self, Guard}, middleware::Logger, Error, http::StatusCode, CustomizeResponder, body::BoxBody, HttpResponseBuilder
 };
 use regex::Regex;
 
@@ -89,16 +90,36 @@ async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder 
 
     let username = &dom_caps.name("username").map_or("", |m| m.as_str());
     let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
-    let mut path = path.into_inner();
+    
+    let og_path_str = path.as_ref();
+    let mut path: std::path::PathBuf = path.parse().unwrap();
 
-    if path.len() == 0 {
-        path = String::from("index.html");
+    if path.to_str().unwrap().len() == 0 {
+        path = [".", "pages", username, repo, "index.html"].iter().collect();
+    } else {
+        path = std::path::PathBuf::from(format!("./pages/{}/{}/{}", username, repo, og_path_str));
     }
 
-    match std::fs::read_to_string(format!("./pages/{}/{}/{}", username, repo, path)) {
-        Ok(val) => HttpResponse::Ok().body(val),
-        Err(_) => HttpResponse::NotFound().into()
+    let file = NamedFile::open_async(path).await;
+
+    if !file.is_err() {
+        return file.unwrap().into_response(&req).customize();
+    } 
+
+    let four_oh_four = NamedFile::open_async("./templates/404.html").await;
+
+    if !four_oh_four.is_err() {
+        return four_oh_four
+            .unwrap()
+            .into_response(&req)
+            .customize()
+            .with_status(StatusCode::NOT_FOUND)
     }
+
+    return HttpResponse::InternalServerError()
+        .body(BoxBody::new(SERVER_ERR))
+        .customize();
+
 }
 
 async fn fetch_pages(req: HttpRequest) -> impl Responder {
