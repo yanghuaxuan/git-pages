@@ -21,15 +21,10 @@ async fn main() -> std::io::Result<()> {
         App::new()
         .wrap(Logger::default())
         .service(
-            web::resource("/{any:.*}")
-            .guard(guard::Get())
+            web::resource("/")
             .guard(guard::Host(format!("{root_domain}")))
-            .to(index))
-        .service(
-            web::resource("/{filename:.*}")
             .guard(guard::Get())
-            .guard(HostPattern(re_domain.to_owned()))
-            .to(try_pages))
+            .to(index))
         .service(
             web::resource("/")
             .guard(guard::Put())
@@ -37,10 +32,12 @@ async fn main() -> std::io::Result<()> {
             .to(fetch_pages)
         )
         .service(
-            web::scope("/")
-            .route("", web::to(|| async { HttpResponse::BadRequest()} )))
+            web::resource("/{filename:.*}")
+            .guard(HostPattern(re_domain.to_owned()))
+            .guard(guard::Get())
+            .to(try_pages))
         .default_service(
-            web::route().to(not_found)
+            web::route().to(|| async { HttpResponse::BadRequest() })
         )
     })
     .bind(("0.0.0.0", 8082))?
