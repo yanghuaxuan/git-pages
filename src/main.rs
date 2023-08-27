@@ -89,7 +89,11 @@ async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder 
 
     let username = &dom_caps.name("username").map_or("", |m| m.as_str());
     let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
-    let path = path.into_inner();
+    let mut path = path.into_inner();
+
+    if path.len() == 0 {
+        path = String::from("index.html");
+    }
 
     match std::fs::read_to_string(format!("./pages/{}/{}/{}", username, repo, path)) {
         Ok(val) => HttpResponse::Ok().body(val),
