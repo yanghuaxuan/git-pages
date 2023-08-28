@@ -183,12 +183,3 @@ async fn index(req: HttpRequest) -> impl Responder {
         }
     }
 }
-
-async fn not_found() -> impl Responder {
-    match std::fs::read_to_string("./templates/404.html") {
-        Ok(val) => HttpResponse::NotFound().body(val),
-        Err(_) => {
-            return HttpResponse::InternalServerError().body(SERVER_ERR)
-        }
-    }
-}
