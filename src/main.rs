@@ -17,11 +17,13 @@ async fn main() -> std::io::Result<()> {
     // Extra environmental variable checks before starting server
     std::env::var("GIT_DOMAIN").expect("Environmental variabble GIT_DOMAIN must be defined!");
 
+    println!("{}", root_domain);
+
     HttpServer::new(move || {
         App::new()
         .wrap(Logger::default())
         .service(
-            web::resource("/")
+            web::resource(r"/{filename:.*}")
             .guard(guard::Host(format!("{root_domain}")))
             .guard(guard::Get())
             .to(index))
@@ -173,9 +175,9 @@ async fn fetch_pages(req: HttpRequest) -> impl Responder {
     }
 }
 
-async fn index() -> impl Responder {
-    match std::fs::read_to_string("./templates/index.html") {
-        Ok(val) => HttpResponse::Ok().body(val),
+async fn index(req: HttpRequest) -> impl Responder {
+    match NamedFile::open_async("./templates/index.html").await {
+        Ok(val) => val.into_response(&req),
         Err(_) => {
             return HttpResponse::InternalServerError().body(SERVER_ERR)
         }
