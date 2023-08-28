@@ -103,18 +103,10 @@ async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder 
         return file.unwrap().into_response(&req).customize();
     } 
 
-    let four_oh_four = NamedFile::open_async("./templates/404.html").await;
-    if !four_oh_four.is_err() {
-        return four_oh_four
-            .unwrap()
-            .into_response(&req)
-            .customize()
-            .with_status(StatusCode::NOT_FOUND)
-    }
-
-    HttpResponse::InternalServerError()
-        .body(BoxBody::new(SERVER_ERR))
-        .customize()
+    NamedFile::open_async(format!("./pages/{}/{}/404.html", username, repo)).await
+        .or(NamedFile::open_async("./templates/404.html").await)
+        .map_or(HttpResponse::InternalServerError().body(SERVER_ERR).customize().with_status(StatusCode::INTERNAL_SERVER_ERROR), 
+                |val| val.into_response(&req).customize().with_status(StatusCode::NOT_FOUND))
 
 }
 
