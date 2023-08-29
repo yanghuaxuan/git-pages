@@ -1,4 +1,4 @@
-# Git-Pages 
+# Git-Pages Server
 **Serve and manage simple static sites using git!**
 
 Git-Pages is a WIP standalone service for serving static websites using any git server you wish.
