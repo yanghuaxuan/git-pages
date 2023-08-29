@@ -1,3 +1,5 @@
+use std::ffi::OsStr;
+
 use actix_files::NamedFile;
 use actix_web::{
     web, App, HttpResponse, HttpServer,
@@ -149,6 +151,28 @@ async fn fetch_pages(req: HttpRequest) -> impl Responder {
                     .status()
                     .expect("Cannot call git!");
             } else {
+                // Get the default remote branch
+               std::process::Command::new("git")
+                .arg("remote")
+                .arg("show")
+                .arg("origin")
+                .stdout(std::process::Stdio::piped())
+                .spawn()
+                .expect("Cannot call git!")
+                .stdout
+                .expect("Cannot get stdout of git");
+
+               let def_branch = std::process::Command::new("sed")
+                .stdin(std::process::Stdio::piped())
+                .arg("-n")
+                .arg("'s/[[:blank:]]*HEAD branch:[[:blank:]]//p'")
+                .output()
+                .expect("Cannot call sed!");
+
+               std::process::Command::new("git")
+                .arg("switch")
+                .arg(String::from_utf8(def_branch.stdout).unwrap());
+
                std::process::Command::new("git") 
                 .arg("-C")
                 .arg(format!("./pages/{username}/{repo}"))
