@@ -1,9 +1,7 @@
-use std::ffi::OsStr;
-
 use actix_files::NamedFile;
 use actix_web::{
     web, App, HttpResponse, HttpServer,
-    Responder, HttpRequest, guard::{self, Guard}, middleware::Logger, http::StatusCode, body::BoxBody
+    Responder, HttpRequest, guard::{self, Guard}, middleware::Logger, http::StatusCode
 };
 use regex::Regex;
 
