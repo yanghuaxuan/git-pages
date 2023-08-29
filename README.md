@@ -25,3 +25,7 @@ Where *REPO* is optional, in which case by default it looks for the `pages` bran
 
 To clone/pull a page (using curl):
 - `curl -X PUT https://[REPO].USERNAME.{DOMAIN}`
+
+# TODO
+- Implement `https://USERNAME.codeberg.page[/REPOSITORY][/@BRANCH]`
+- Work on index.html
