@@ -24,8 +24,6 @@ async fn main() -> std::io::Result<()> {
     // Extra environmental variable checks before starting server
     std::env::var("GIT_DOMAIN").expect("Environmental variabble GIT_DOMAIN must be defined!");
 
-    println!("{}", root_domain);
-
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -99,7 +97,6 @@ async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder 
     let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
 
     let path = std::path::PathBuf::from(format!("./pages/{}/{}/{}", username, repo, path.as_str()));
-    println!("{}\n", &path.to_str().unwrap());
 
     let mut file = NamedFile::open_async(&path).await;
     // Try one more time, this time attempting to serve the index file in a directory
