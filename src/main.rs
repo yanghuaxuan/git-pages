@@ -160,22 +160,25 @@ async fn fetch_pages(req: HttpRequest) -> impl Responder {
                 .stdout
                 .expect("Cannot get stdout of git");
 
-               let def_branch = std::process::Command::new("sed")
+               let def_branch_out = std::process::Command::new("sed")
                 .stdin(std::process::Stdio::piped())
                 .arg("-n")
                 .arg("'s/[[:blank:]]*HEAD branch:[[:blank:]]//p'")
                 .output()
                 .expect("Cannot call sed!");
 
+               let def_branch = String::from_utf8_lossy(&def_branch_out.stdout);
+
                std::process::Command::new("git")
                 .arg("switch")
-                .arg(String::from_utf8(def_branch.stdout).unwrap());
+                .arg(def_branch.as_ref());
 
                std::process::Command::new("git") 
                 .arg("-C")
                 .arg(format!("./pages/{username}/{repo}"))
                 .arg("pull")
                 .arg("origin")
+                .arg(def_branch.as_ref())
                 .arg("--rebase")
                 .env("GIT_TERMINAL_PROMPT", "0")
                 .status()
