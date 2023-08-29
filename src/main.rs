@@ -195,10 +195,9 @@ async fn fetch_pages(req: HttpRequest) -> impl Responder {
                 std::process::Command::new("git")
                     .arg("-C")
                     .arg(format!("./pages/{username}/{repo}"))
-                    .arg("pull")
+                    .arg("reset")
+                    .arg("--hard")
                     .arg("origin")
-                    .arg(def_branch.as_ref())
-                    .arg("--rebase")
                     .env("GIT_TERMINAL_PROMPT", "0")
                     .status()
                     .expect("Cannot call git!");
