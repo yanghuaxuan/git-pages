@@ -193,6 +193,11 @@ async fn fetch_pages(req: HttpRequest) -> impl Responder {
                     .arg(def_branch.as_ref());
 
                 std::process::Command::new("git")
+                    .arg("fetch")
+                    .arg("origin")
+                    .arg(def_branch.as_ref());
+
+                std::process::Command::new("git")
                     .arg("-C")
                     .arg(format!("./pages/{username}/{repo}"))
                     .arg("reset")
