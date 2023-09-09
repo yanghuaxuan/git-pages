@@ -1,7 +1,7 @@
 use actix_files::NamedFile;
 use actix_web::{
     guard::{self, Guard},
-    http::{StatusCode, header::SERVER},
+    http::StatusCode,
     middleware::Logger,
     web, App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
@@ -81,9 +81,6 @@ fn HostPattern(host_pattern: Regex) -> HostPatternGuard {
 }
 
 async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder {
-    // Valid Host header should already be validated by Guards
-    let host = req.headers().get("Host").unwrap().to_str().unwrap();
-
     let root_domain =
         std::env::var("ROOT_DOMAIN").expect("Environmental variabble ROOT_DOMAIN must be defined!");
     let re_domain = Regex::new(&format!(
@@ -91,81 +88,40 @@ async fn try_pages(req: HttpRequest, path: web::Path<String>) -> impl Responder 
         root_domain
     ))
     .unwrap();
-    let path_domain = Regex::new(r"(?P<repo>^[a-zA-Z0-9-]*)?\/?(?P<branch>@[a-zA-Z0-9]*)?").expect("Failed to compile regex!");
 
+    // Valid Host header should already be validated by Guards
+    let host = req.headers().get("Host").unwrap().to_str().unwrap();
     let dom_caps = re_domain.captures(&host).unwrap();
-    let path_caps = path_domain.captures(&path).unwrap();
 
-    let username = dom_caps.name("username");
-    let repo = dom_caps.name("repo");
+    let username = &dom_caps.name("username").map_or("", |m| m.as_str());
+    let repo = &dom_caps.name("repo").map_or("pages", |m| m.as_str());
 
-    match username {
-        Some(username) => {
-            let username = username.as_str();
-            let repo = repo.map_or("pages", |v| v.as_str());
+    let path = std::path::PathBuf::from(format!("./pages/{}/{}/{}", username, repo, path.as_str()));
 
-            println!("{}", username);
-            println!("{}", repo);
-
-            /* Attempt to fetch page from domain */
-            let file_path = std::path::PathBuf::from(format!("./pages/{}/{}/{}", username, repo, path.as_str()));
-            let mut file = NamedFile::open_async(&file_path).await;
-            // Try one more time, this time attempting to serve the index file in a directory
-            if file.is_err() || std::fs::metadata(&file_path).unwrap().is_dir() {
-                let path = file_path.join("index.html");
-                file = NamedFile::open_async(path).await;
-            }
-            if !file.is_err() {
-                return file.unwrap().into_response(&req).customize();
-            }
-
-            /* Attempt to fetch page from path */
-            let repo = path_caps.name("repo").map_or("pages", |v| v.as_str());
-            // TODO: Branches
-            let branch = path_caps.name("branch").map(|v| v.as_str());
-
-            let file_path = std::path::PathBuf::from(format!("./pages/{}/{}/{}", username, repo, path.as_str()));
-            let mut file = NamedFile::open_async(&file_path).await;
-            // Try one more time, this time attempting to serve the index file in a directory
-            if file.is_err() || std::fs::metadata(&file_path).unwrap().is_dir() {
-                let path = file_path.join("index.html");
-                file = NamedFile::open_async(path).await;
-            }
-            if !file.is_err() {
-                return file.unwrap().into_response(&req).customize();
-            }
-
-            NamedFile::open_async(format!("./pages/{}/{}/404.html", username, repo))
-                .await
-                .or(NamedFile::open_async("./templates/404.html").await)
-                .map_or(
-                    HttpResponse::InternalServerError()
-                        .body(SERVER_ERR)
-                        .customize()
-                        .with_status(StatusCode::INTERNAL_SERVER_ERROR),
-                    |val| {
-                        val.into_response(&req)
-                            .customize()
-                            .with_status(StatusCode::NOT_FOUND)
-                    },
-                )
-        }
-        None => {
-            NamedFile::open_async("./templates/404.html").await
-            .map_or(
-                HttpResponse::InternalServerError()
-                    .body(SERVER_ERR)
-                    .customize()
-                    .with_status(StatusCode::INTERNAL_SERVER_ERROR),
-                |v| {
-                    v.into_response(&req)
-                        .customize()
-                        .with_status(StatusCode::NOT_FOUND)
-                }
-            )
-        }
+    let mut file = NamedFile::open_async(&path).await;
+    // Try one more time, this time attempting to serve the index file in a directory
+    if file.is_err() || std::fs::metadata(&path).unwrap().is_dir() {
+        let path = path.join("index.html");
+        file = NamedFile::open_async(path).await;
+    }
+    if !file.is_err() {
+        return file.unwrap().into_response(&req).customize();
     }
 
+    NamedFile::open_async(format!("./pages/{}/{}/404.html", username, repo))
+        .await
+        .or(NamedFile::open_async("./templates/404.html").await)
+        .map_or(
+            HttpResponse::InternalServerError()
+                .body(SERVER_ERR)
+                .customize()
+                .with_status(StatusCode::INTERNAL_SERVER_ERROR),
+            |val| {
+                val.into_response(&req)
+                    .customize()
+                    .with_status(StatusCode::NOT_FOUND)
+            },
+        )
 }
 
 async fn fetch_pages(req: HttpRequest) -> impl Responder {
@@ -174,7 +130,7 @@ async fn fetch_pages(req: HttpRequest) -> impl Responder {
     let git_domain =
         std::env::var("GIT_DOMAIN").expect("Environmental variabble GIT_DOMAIN must be defined!");
     let re_domain = Regex::new(&format!(
-        r#"((?P<username>^[a-zA-Z0-9-]*)\.)?((?P<repo>^[a-zA-Z0-9-]*)\.)?{}"#,
+        r#"((?P<username>\w*)\.)?((?P<repo>\w*)\.)?{}"#,
         root_domain
     ))
     .unwrap();
